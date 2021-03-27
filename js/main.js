@@ -109,7 +109,7 @@ const fuzzyMatch = (drug, searchText) => {
     return tokens.join(''); // convert tokens to string and return
 };
 const betterSearchDrug = debounce(searchDrugs, 500);
-const betterfzfSearchDrug = debounce(fzfsearchDrugs, 500);
+const betterfzfSearchDrug = debounce(fzfsearchDrugs, 300);
 const outputHtmlWithHilight = (matches, st) => {
     if (matches.length > 0){
         const html = matches.map(match => {
