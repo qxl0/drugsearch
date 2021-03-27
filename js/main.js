@@ -1,5 +1,6 @@
 
 //import { debounce } from 'https://dev.jspm.io/rxjs@6/_esm2015/operators';
+
 const search=document.getElementById('search');
 const matchList=document.getElementById('match-list');
 const numfound=document.getElementById("numfound");
@@ -70,7 +71,22 @@ const fzfsearchDrugs = async searchText => {
     outputNumFound(results.length);
     fzfoutputHtml(results);
 }
-
+const options = {
+    limit: 300, // don't return more results than you need!
+    allowTypo: false, // if you don't care about allowing typos
+    threshold: -10000, // don't return bad results
+    key: 'FULL_NAME'
+  }
+const fuzzysortSearchDrugs = searchText => {
+    let matches = fuzzysort.go(searchText, druglist, options);
+    let highlighteddisplay = [];
+    for(let i=0;i< matches.length;i++){
+        highlighteddisplay.push(fuzzysort.highlight(matches[i], open='<strong>', '</strong>'))
+    }    
+    outputNumFound(matches.length);
+    outputfuzzysortHtml(matches, highlighteddisplay);
+}
+const betterfuzzysortSearchDrugs = debounce(fuzzysortSearchDrugs, 500);
 const fuzzyMatch = (drug, searchText) => {
     let text = drug.PSN;
     // remove spaces, lowercase the searchText so the search is case insensitive
@@ -140,6 +156,31 @@ const fzfoutputHtml = matches => {
         matchList.innerHTML = '';
     }
 }
+const outputfuzzysortHtml = (matches, highlighteddisplay) => {
+    /*
+    {"RXCUI":"999996","GENERIC_RXCUI":"","TTY":"SCD","FULL_NAME":"amlodipine 5 MG / hydrochlorothiazide 12.5 MG / olmesartan medoxomil 40 MG Oral Tablet",
+    "RXN_DOSE_FORM":"Oral Tablet",
+    "FULL_GENERIC_NAME":"amlodipine 5 MG / hydrochlorothiazide 12.5 MG / olmesartan medoxomil 40 MG Oral Tablet","BRAND_NAME":"",
+    "DISPLAY_NAME":"amLODIPine/Hydrochlorothiazide/Olmesartan (Oral Pill)","ROUTE":"Oral Pill","NEW_DOSE_FORM":"Tab",
+    "STRENGTH":"5-12.5-40 mg","SUPPRESS_FOR":"","DISPLAY_NAME_SYNONYM":"HCTZ","IS_RETIRED":"",
+    "SXDG_RXCUI":"1152278","SXDG_TTY":"SCDG","SXDG_NAME":"amlodipine / hydrochlorothiazide / olmesartan Pill",
+    "PSN":"olmesartan medoxomil 40 MG / amLODIPine 5 MG / hydroCHLOROthiazide 12.5 MG Oral Tablet"}
+    */
+    if (matches.length > 0){
+        const html = matches.map((match,i) => `
+            <div class="suggestion card card-body mb-1">
+                <h5>${highlighteddisplay[i]}                 
+                </h5>
+                <small>RXCUI : <span class="text-primary">${match.obj.RXCUI}</span> / SXDG_NAME: ${match.obj.SXDG_NAME} / PSN: ${match.obj.PSN}</small>
+            </div>
+        `).join('');
+
+        matchList.innerHTML = html;
+    }
+    else{
+        matchList.innerHTML = '';
+    }
+}
 const outputHtml = matches => {
     /*
     {"RXCUI":"999996","GENERIC_RXCUI":"","TTY":"SCD","FULL_NAME":"amlodipine 5 MG / hydrochlorothiazide 12.5 MG / olmesartan medoxomil 40 MG Oral Tablet",
@@ -174,5 +215,5 @@ const outputNumFound = num => {
     numfound.innerHTML = html;
 }
 
-search.addEventListener('input', () => betterfzfSearchDrug(search.value));
+search.addEventListener('input', () => betterfuzzysortSearchDrugs(search.value));
 
