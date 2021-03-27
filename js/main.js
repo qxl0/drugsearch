@@ -19,9 +19,7 @@ const debounce = (func, wait) => {
       clearTimeout(timeout);
       timeout = setTimeout(later, wait);
     };
-  };
-
-// Search drug.json and filter it
+};
 const searchDrugs = async searchText => {
     
     console.log(searchText);
@@ -57,7 +55,45 @@ const searchDrugs = async searchText => {
     //outputHtml(matches);
     outputHtmlWithHilight(matches, st);
 }
+// Search drug.json and filter it
+const fzfsearchDrugs = async searchText => {  
+    var results = [];  
+    console.log(searchText);   
+
+    druglist.forEach(drug => {
+        var result = fuzzyMatch(drug, searchText);
+        if (result){
+            results.push({"drug": drug, "display": result});
+        }
+    })
+    
+    outputNumFound(results.length);
+    fzfoutputHtml(results);
+}
+
+const fuzzyMatch = (drug, searchText) => {
+    let text = drug.PSN;
+    // remove spaces, lowercase the searchText so the search is case insensitive
+    searchText = searchText.replace(/\ /g, '').toLowerCase();
+    let tokens = text.split('');
+    let searchPosition = 0;
+    tokens.forEach((textChar,i) => {
+        if (textChar.toLowerCase() == searchText[searchPosition]) {
+            tokens[i] = '<strong>' + textChar + '</strong>'; // highlight
+            searchPosition++; // move to next search letter
+            if (searchPosition >= searchText.length){
+                return false;
+            }
+        }
+    });
+
+    if (searchPosition != searchText.length){
+        return '';
+    }
+    return tokens.join(''); // convert tokens to string and return
+};
 const betterSearchDrug = debounce(searchDrugs, 500);
+const betterfzfSearchDrug = debounce(fzfsearchDrugs, 500);
 const outputHtmlWithHilight = (matches, st) => {
     if (matches.length > 0){
         const html = matches.map(match => {
@@ -72,6 +108,31 @@ const outputHtmlWithHilight = (matches, st) => {
                     <small>RXCUI : <span class="text-primary">${match.RXCUI}</span> / SXDG_NAME: ${match.SXDG_NAME} / PSN: ${match.PSN}</small>
                 </div>
                 `}).join('');
+
+        matchList.innerHTML = html;
+    }
+    else{
+        matchList.innerHTML = '';
+    }
+}
+const fzfoutputHtml = matches => {
+    /*
+    {"RXCUI":"999996","GENERIC_RXCUI":"","TTY":"SCD","FULL_NAME":"amlodipine 5 MG / hydrochlorothiazide 12.5 MG / olmesartan medoxomil 40 MG Oral Tablet",
+    "RXN_DOSE_FORM":"Oral Tablet",
+    "FULL_GENERIC_NAME":"amlodipine 5 MG / hydrochlorothiazide 12.5 MG / olmesartan medoxomil 40 MG Oral Tablet","BRAND_NAME":"",
+    "DISPLAY_NAME":"amLODIPine/Hydrochlorothiazide/Olmesartan (Oral Pill)","ROUTE":"Oral Pill","NEW_DOSE_FORM":"Tab",
+    "STRENGTH":"5-12.5-40 mg","SUPPRESS_FOR":"","DISPLAY_NAME_SYNONYM":"HCTZ","IS_RETIRED":"",
+    "SXDG_RXCUI":"1152278","SXDG_TTY":"SCDG","SXDG_NAME":"amlodipine / hydrochlorothiazide / olmesartan Pill",
+    "PSN":"olmesartan medoxomil 40 MG / amLODIPine 5 MG / hydroCHLOROthiazide 12.5 MG Oral Tablet"}
+    */
+    if (matches.length > 0){
+        const html = matches.map(match => `
+            <div class="suggestion card card-body mb-1">
+                <h5>${match.display}                 
+                </h5>
+                <small>RXCUI : <span class="text-primary">${match.drug.RXCUI}</span> / SXDG_NAME: ${match.drug.SXDG_NAME} / PSN: ${match.drug.PSN}</small>
+            </div>
+        `).join('');
 
         matchList.innerHTML = html;
     }
@@ -112,26 +173,6 @@ const outputNumFound = num => {
     const html = `<h2>${num} Found!</h2>`;
     numfound.innerHTML = html;
 }
-// function debounce(func, wait, immediate) {
-//     var timeout;
-  
-//     return function executedFunction() {
-//       var context = this;
-//       var args = arguments;
-          
-//       var later = function() {
-//         timeout = null;
-//         if (!immediate) func.apply(context, args);
-//       };
-  
-//       var callNow = immediate && !timeout;
-      
-//       clearTimeout(timeout);
-  
-//       timeout = setTimeout(later, wait);
-      
-//       if (callNow) func.apply(context, args);
-//     };
-//   };
-search.addEventListener('input', () => betterSearchDrug(search.value));
+
+search.addEventListener('input', () => betterfzfSearchDrug(search.value));
 
