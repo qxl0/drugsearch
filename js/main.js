@@ -7,7 +7,7 @@ const numfound=document.getElementById("numfound");
 
 const res = await fetch('../data/RxTerms202103.json');
 const druglist = await res.json();
-
+var startms;
 const debounce = (func, wait) => {
     let timeout;
   
@@ -73,17 +73,29 @@ const fzfsearchDrugs = async searchText => {
 }
 const options = {
     limit: 300, // don't return more results than you need!
-    allowTypo: false, // if you don't care about allowing typos
+    allowTypo: true, // if you don't care about allowing typos
     threshold: -10000, // don't return bad results
     key: 'FULL_NAME'
-  }
+}
+const fuzzysortAsyncSearchDrugs = searchText => {
+    startms = Date.now();
+    let matchesPromise = fuzzysort.goAsync(searchText, druglist, options);
+    let highlighteddisplay = [];
+    matchesPromise.then(matches => {
+        for(let i=0;i< matches.length;i++){
+            highlighteddisplay.push(fuzzysort.highlight(matches[i], open='<strong>', '</strong>'))
+        }    
+        outputNumFound(matches.total);
+        outputfuzzysortHtml(matches, highlighteddisplay);
+    })    
+}
 const fuzzysortSearchDrugs = searchText => {
     let matches = fuzzysort.go(searchText, druglist, options);
     let highlighteddisplay = [];
     for(let i=0;i< matches.length;i++){
         highlighteddisplay.push(fuzzysort.highlight(matches[i], open='<strong>', '</strong>'))
     }    
-    outputNumFound(matches.length);
+    outputNumFound(matches.totaal);
     outputfuzzysortHtml(matches, highlighteddisplay);
 }
 const betterfuzzysortSearchDrugs = debounce(fuzzysortSearchDrugs, 500);
@@ -207,13 +219,14 @@ const outputHtml = matches => {
     }
 }
 const outputNumFound = num => {
+    const duration = Date.now() - startms;
     if (num === 0){
         numfound.innerHTML = '';
         return;
     }
-    const html = `<h2>${num} Found!</h2>`;
+    const html =`<p>${num} matches in ${duration}ms</p>`;
     numfound.innerHTML = html;
 }
 
-search.addEventListener('input', () => betterfuzzysortSearchDrugs(search.value));
+search.addEventListener('input', () => fuzzysortAsyncSearchDrugs(search.value));
 
